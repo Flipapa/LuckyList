@@ -19,6 +19,7 @@ View your app in AI Studio: https://ai.studio/apps/8ad61d7a-db70-4230-9a3f-34895
 3. Run the app:
    `npm run dev`
 
+
 ## Deployment
 
 This project is configured with a GitHub Action to automatically deploy to GitHub Pages. 
