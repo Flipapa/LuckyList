@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trophy, RotateCcw, Play, UserCheck, Gift, RefreshCw, Download } from 'lucide-react';
+import Papa from 'papaparse';
 import confetti from 'canvas-confetti';
-import { Trophy, RotateCcw, Play, UserCheck, Gift, RefreshCw } from 'lucide-react';
 import { Person, Prize } from '../types';
 
 interface LuckyDrawProps {
@@ -13,7 +14,14 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [allowRepeat, setAllowRepeat] = useState(false);
   const [winner, setWinner] = useState<Person | null>(null);
-  const [history, setHistory] = useState<{ person: Person; prize: Prize; timestamp: number }[]>([]);
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [showConfirmRedraw, setShowConfirmRedraw] = useState(false);
+
+  const [history, setHistory] = useState<{ person: Person; prize: Prize; timestamp: number }[]>(() => {
+    const saved = localStorage.getItem('luckylist_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const timerRef = useRef<number | null>(null);
 
@@ -38,16 +46,20 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
     return null; // All prizes full
   }, [prizes, history]);
 
-  const availablePeople = allowRepeat 
-    ? people 
+  useEffect(() => {
+    localStorage.setItem('luckylist_history', JSON.stringify(history));
+  }, [history]);
+
+  const availablePeople = allowRepeat
+    ? people
     : people.filter(p => !history.some(h => h.person.id === p.id));
 
   const startDraw = () => {
     if (!currentPrizeInfo || availablePeople.length === 0) return;
-    
+
     setIsDrawing(true);
     setWinner(null);
-    
+
     let speed = 50;
     let count = 0;
     const maxCount = 30;
@@ -55,21 +67,21 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
     const animate = () => {
       setCurrentIndex(prev => (prev + 1) % availablePeople.length);
       count++;
-      
+
       if (count < maxCount) {
         timerRef.current = window.setTimeout(animate, speed);
         if (count > maxCount * 0.7) speed += 30;
       } else {
         const finalWinner = availablePeople[Math.floor(Math.random() * availablePeople.length)];
         setWinner(finalWinner);
-        
+
         setHistory(prev => [
           { person: finalWinner, prize: currentPrizeInfo.prize, timestamp: Date.now() },
           ...prev
         ]);
-        
+
         setIsDrawing(false);
-        
+
         confetti({
           particleCount: 150,
           spread: 70,
@@ -82,23 +94,54 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
     animate();
   };
 
-  const redraw = () => {
+  const requestRedraw = () => {
     if (history.length === 0 || isDrawing) return;
-    if (!confirm('確定要作廢上一筆紀錄並重新抽獎嗎？')) return;
+    setShowConfirmRedraw(true);
+  };
 
+  const confirmRedraw = () => {
+    setShowConfirmRedraw(false);
     // Remove last record
     setHistory(prev => prev.slice(1));
     setWinner(null);
-    
+
     // Start new draw immediately
     setTimeout(startDraw, 100);
   };
 
-  const resetHistory = () => {
-    if (confirm('確定要重置所有獲獎紀錄嗎？')) {
-      setHistory([]);
-      setWinner(null);
+  const confirmResetHistory = () => {
+    setHistory([]);
+    setWinner(null);
+    localStorage.removeItem('luckylist_history');
+    setShowConfirmReset(false);
+  };
+
+  const requestResetHistory = () => {
+    if (history.length > 0) {
+      setShowConfirmReset(true);
     }
+  };
+
+  const downloadHistoryCSV = () => {
+    if (history.length === 0) return;
+
+    const data = history.map((item, index) => ({
+      '順序': history.length - index,
+      '獲獎者': item.person.name,
+      '獎項': item.prize.name,
+      '時間': new Date(item.timestamp).toLocaleString()
+    }));
+
+    const csv = Papa.unparse(data);
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `抽籤紀錄_${new Date().toLocaleDateString()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   useEffect(() => {
@@ -133,7 +176,7 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
           <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-400 via-transparent to-transparent" />
           </div>
-          
+
           <AnimatePresence mode="wait">
             {isDrawing ? (
               <motion.div
@@ -203,7 +246,7 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
               </div>
               <span className="text-sm font-medium text-zinc-600 group-hover:text-zinc-900 transition-colors">允許重複獲獎</span>
             </label>
-            
+
             <div className="text-sm font-medium text-zinc-400">
               剩餘可抽：{availablePeople.length} 人
             </div>
@@ -218,10 +261,10 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
               <Play fill="currentColor" size={24} />
               {isDrawing ? '抽籤中...' : currentPrizeInfo ? `開始抽取 ${currentPrizeInfo.prize.name}` : '已抽完'}
             </button>
-            
+
             {history.length > 0 && (
               <button
-                onClick={redraw}
+                onClick={requestRedraw}
                 disabled={isDrawing}
                 className="flex-1 h-16 btn-secondary text-zinc-600 flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
                 title="作廢上一筆並重新抽獎"
@@ -241,15 +284,27 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
             <UserCheck size={18} className="text-zinc-500" />
             <h3 className="font-semibold text-zinc-900">獲獎紀錄</h3>
           </div>
-          <button
-            onClick={resetHistory}
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
-          >
-            <RotateCcw size={12} />
-            重置紀錄
-          </button>
+          <div className="flex items-center gap-4">
+            {history.length > 0 && (
+              <button
+                onClick={downloadHistoryCSV}
+                className="text-xs font-medium text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
+                title="下載 CSV"
+              >
+                <Download size={14} />
+                下載紀錄
+              </button>
+            )}
+            <button
+              onClick={requestResetHistory}
+              className="text-xs font-medium text-red-400 hover:text-red-600 flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw size={12} />
+              重置紀錄
+            </button>
+          </div>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <AnimatePresence>
             {history.map((item, idx) => (
@@ -278,6 +333,60 @@ export default function LuckyDraw({ people, prizes }: LuckyDrawProps) {
           )}
         </div>
       </div>
+
+      {showConfirmReset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full space-y-4"
+          >
+            <h3 className="text-lg font-bold text-zinc-900">確定重置紀錄？</h3>
+            <p className="text-zinc-500 text-sm">這將會清除所有中獎名單，且無法恢復。</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowConfirmReset(false)}
+                className="px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmResetHistory}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                確定重置
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {showConfirmRedraw && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full space-y-4"
+          >
+            <h3 className="text-lg font-bold text-zinc-900">確定重新抽獎嗎？</h3>
+            <p className="text-zinc-500 text-sm">將作廢上一筆（{history[0]?.person.name}）的獲獎紀錄並立刻重新抽取。</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowConfirmRedraw(false)}
+                className="px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmRedraw}
+                className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 hover:bg-black rounded-lg transition-colors"
+              >
+                作廢並重抽
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

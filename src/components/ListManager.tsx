@@ -11,7 +11,7 @@ interface ListManagerProps {
 }
 
 const MOCK_NAMES = [
-  '王小明', '李小華', '張大同', '陳志豪', '林雅婷', 
+  '王小明', '李小華', '張大同', '陳志豪', '林雅婷',
   '黃建宏', '吳淑芬', '劉德華', '周杰倫', '蔡英文',
   '郭台銘', '張忠謀', '林志玲', '金城武', '周潤發',
   '梁朝偉', '張曼玉', '舒淇', '彭于晏', '桂綸鎂'
@@ -21,6 +21,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
   const [inputText, setInputText] = useState('');
   const [newPrizeName, setNewPrizeName] = useState('');
   const [newPrizeCount, setNewPrizeCount] = useState(1);
+  const [showClearListConfirm, setShowClearListConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Find duplicates
@@ -41,7 +42,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
       .split(/[\n,]+/)
       .map(n => n.trim())
       .filter(n => n.length > 0);
-    
+
     const newPeople: Person[] = names.map(name => ({
       id: Math.random().toString(36).substr(2, 9),
       name
@@ -61,7 +62,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
           .flat()
           .map(n => String(n).trim())
           .filter(n => n.length > 0);
-        
+
         const newPeople: Person[] = names.map(name => ({
           id: Math.random().toString(36).substr(2, 9),
           name
@@ -71,7 +72,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
       header: false,
       skipEmptyLines: true,
     });
-    
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -93,10 +94,15 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
     setPeople(uniquePeople);
   };
 
-  const clearList = () => {
-    if (confirm('確定要清空名單嗎？')) {
-      setPeople([]);
+  const requestClearList = () => {
+    if (people.length > 0) {
+      setShowClearListConfirm(true);
     }
+  };
+
+  const confirmClearList = () => {
+    setPeople([]);
+    setShowClearListConfirm(false);
   };
 
   const removePerson = (id: string) => {
@@ -139,7 +145,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
           <UserPlus size={20} className="text-zinc-900" />
           <h2 className="text-lg font-bold text-zinc-900">名單管理</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -174,7 +180,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
             <label className="block text-sm font-semibold text-zinc-700">
               上傳 CSV 檔案
             </label>
-            <div 
+            <div
               onClick={() => fileInputRef.current?.click()}
               className="w-full h-48 border-2 border-dashed border-zinc-200 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-zinc-400 hover:bg-zinc-50 transition-all group"
             >
@@ -195,7 +201,7 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
             </div>
             <div className="flex gap-2">
               <button
-                onClick={clearList}
+                onClick={requestClearList}
                 disabled={people.length === 0}
                 className="flex-1 btn-secondary text-red-600 border-red-100 hover:bg-red-50 flex items-center justify-center gap-2"
               >
@@ -238,11 +244,10 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
                 {people.map((person) => (
                   <div
                     key={person.id}
-                    className={`group flex items-center justify-between p-2 px-3 rounded-lg border transition-all ${
-                      duplicates.has(person.name) 
-                        ? 'bg-amber-50 border-amber-200 hover:border-amber-400' 
-                        : 'bg-zinc-50 border-zinc-100 hover:border-zinc-300'
-                    }`}
+                    className={`group flex items-center justify-between p-2 px-3 rounded-lg border transition-all ${duplicates.has(person.name)
+                      ? 'bg-amber-50 border-amber-200 hover:border-amber-400'
+                      : 'bg-zinc-50 border-zinc-100 hover:border-zinc-300'
+                      }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-sm font-medium text-zinc-700 truncate">{person.name}</span>
@@ -371,6 +376,29 @@ export default function ListManager({ people, setPeople, prizes, setPrizes }: Li
           </div>
         </div>
       </section>
+
+      {showClearListConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full space-y-4">
+            <h3 className="text-lg font-bold text-zinc-900">確定清空名單？</h3>
+            <p className="text-zinc-500 text-sm">這將會清除所有已加入的成員，且無法恢復。</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowClearListConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmClearList}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                確定清空
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

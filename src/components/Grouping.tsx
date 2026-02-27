@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import Papa from 'papaparse';
 import { Users, LayoutGrid, Shuffle, Download } from 'lucide-react';
 import { Person, Group } from '../types';
@@ -33,7 +33,7 @@ export default function Grouping({ people }: GroupingProps) {
   const downloadCSV = () => {
     if (groups.length === 0) return;
 
-    const data = groups.flatMap(group => 
+    const data = groups.flatMap(group =>
       group.members.map(member => ({
         '組別': group.name,
         '姓名': member.name

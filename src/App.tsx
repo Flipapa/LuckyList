@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Trophy, ListChecks, Sparkles } from 'lucide-react';
 import { Person, AppTab, Prize } from './types';
 import ListManager from './components/ListManager';
@@ -31,7 +31,7 @@ export default function App() {
             </div>
             <h1 className="font-bold text-xl tracking-tight text-zinc-900">LuckyList</h1>
           </div>
-          
+
           <nav className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -72,11 +72,11 @@ export default function App() {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'list' && (
-              <ListManager 
-                people={people} 
-                setPeople={setPeople} 
-                prizes={prizes} 
-                setPrizes={setPrizes} 
+              <ListManager
+                people={people}
+                setPeople={setPeople}
+                prizes={prizes}
+                setPrizes={setPrizes}
               />
             )}
             {activeTab === 'draw' && (
