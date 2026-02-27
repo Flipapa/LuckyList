@@ -1,0 +1,5 @@
+{
+  "name": "LuckyList - 抽籤分組工具",
+  "description": "一個多功能的抽籤與分組工具，支援 CSV 上傳、動態抽籤動畫及自動化分組視覺化。",
+  "requestFramePermissions": []
+}
